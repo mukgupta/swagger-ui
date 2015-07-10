@@ -216,13 +216,15 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.response-content-type', $(this.el)).append(responseContentTypeView.render().el);
 
     ref4 = this.model.parameters;
-    for (p = 0, len3 = ref4.length; p < len3; p++) {
-      param = ref4[p];
-      this.addParameter(param, contentTypeModel.consumes);
-      if (param.paramType === 'body' || param.in === 'body') {
-        this.addBodyModel(param)
-      }
-    }
+
+    this.addGroup(ref4);
+    // for (p = 0, len3 = ref4.length; p < len3; p++) {
+    //   param = ref4[p];
+    //   this.addParameter(param, contentTypeModel.consumes);
+    //   if (param.paramType === 'body' || param.in === 'body') {
+    //     this.addBodyModel(param)
+    //   }
+    // }
 
 
     ref5 = this.model.responseMessages;
@@ -248,8 +250,27 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.model-signature', $(this.el)).append(signatureView.render().el);
   },
 
+  addGroup: function(params, consumes){
+    var p, len3, param;
+    var paramGroupView = new SwaggerUi.Views.ParameterGroupView({
+      model: params,
+      tagName: 'div',
+      className: 'parameter-group',
+      readOnly: this.model.isReadOnly
+    });
+    $('.operation-params', $(this.el)).append(paramGroupView.render().el);
 
-  addParameter: function (param, consumes) {
+    for (p = 0, len3 = params.length; p < len3; p++) {
+      param = params[p];
+      this.addParameter(param, consumes, '.panel-body');
+      if (param.paramType === 'body' || param.in === 'body') {
+        this.addBodyModel(param)
+      }
+    }
+  },
+
+
+  addParameter: function (param, consumes, parent) {
     // Render a parameter
     param.consumes = consumes;
     var paramView = new SwaggerUi.Views.ParameterView({
@@ -258,7 +279,7 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
       className: 'parameter-item',
       readOnly: this.model.isReadOnly
     });
-    $('.operation-params', $(this.el)).append(paramView.render().el);
+    $(parent, $(this.el)).append(paramView.render().el);
   },
 
   addStatusCode: function (statusCode) {

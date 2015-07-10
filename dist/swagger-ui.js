@@ -905,6 +905,9 @@ this["Handlebars"]["templates"]["parameter_content_type"] = Handlebars.template(
   if (stack1 != null) { buffer += stack1; }
   return buffer + "    </select>\n</div>\n";
 },"useData":true});
+this["Handlebars"]["templates"]["parameter_group"] = Handlebars.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
+  return "<div class=\"panel-group\" id=\"accordion3\">\n  <div class=\"panel panel-default\">\n    <div class=\"panel-heading\">\n      <h4 class=\"panel-title\">\n        <a data-toggle=\"collapse\" data-parent=\"#accordion3\" href=\"#collapseOne3\">\n          Poster params\n        </a>\n      </h4>\n    </div>\n    <div id=\"collapseOne3\" class=\"panel-collapse collapse \">\n      <div class=\"panel-body\"></div>\n    </div>\n  </div>\n</div>";
+  },"useData":true});
 this["Handlebars"]["templates"]["resource"] = Handlebars.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
   var helper, functionType="function", helperMissing=helpers.helperMissing, escapeExpression=this.escapeExpression;
   return "<ul class='endpoints' id='"
@@ -21657,13 +21660,15 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.response-content-type', $(this.el)).append(responseContentTypeView.render().el);
 
     ref4 = this.model.parameters;
-    for (p = 0, len3 = ref4.length; p < len3; p++) {
-      param = ref4[p];
-      this.addParameter(param, contentTypeModel.consumes);
-      if (param.paramType === 'body' || param.in === 'body') {
-        this.addBodyModel(param)
-      }
-    }
+
+    this.addGroup(ref4);
+    // for (p = 0, len3 = ref4.length; p < len3; p++) {
+    //   param = ref4[p];
+    //   this.addParameter(param, contentTypeModel.consumes);
+    //   if (param.paramType === 'body' || param.in === 'body') {
+    //     this.addBodyModel(param)
+    //   }
+    // }
 
 
     ref5 = this.model.responseMessages;
@@ -21689,8 +21694,27 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.model-signature', $(this.el)).append(signatureView.render().el);
   },
 
+  addGroup: function(params, consumes){
+    var p, len3, param;
+    var paramGroupView = new SwaggerUi.Views.ParameterGroupView({
+      model: params,
+      tagName: 'div',
+      className: 'parameter-group',
+      readOnly: this.model.isReadOnly
+    });
+    $('.operation-params', $(this.el)).append(paramGroupView.render().el);
 
-  addParameter: function (param, consumes) {
+    for (p = 0, len3 = params.length; p < len3; p++) {
+      param = params[p];
+      this.addParameter(param, consumes, '.panel-body');
+      if (param.paramType === 'body' || param.in === 'body') {
+        this.addBodyModel(param)
+      }
+    }
+  },
+
+
+  addParameter: function (param, consumes, parent) {
     // Render a parameter
     param.consumes = consumes;
     var paramView = new SwaggerUi.Views.ParameterView({
@@ -21699,7 +21723,7 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
       className: 'parameter-item',
       readOnly: this.model.isReadOnly
     });
-    $('.operation-params', $(this.el)).append(paramView.render().el);
+    $(parent, $(this.el)).append(paramView.render().el);
   },
 
   addStatusCode: function (statusCode) {
@@ -22178,6 +22202,32 @@ SwaggerUi.Views.ParameterContentTypeView = Backbone.View.extend({
     return this;
   }
 
+});
+'use strict';
+
+SwaggerUi.Views.ParameterGroupView = Backbone.View.extend({
+  initialize: function(){
+    Handlebars.registerHelper('isArray', function(param, opts) {
+      if (param.type.toLowerCase() === 'array' || param.allowMultiple) {
+        opts.fn(this);
+      } else {
+        opts.inverse(this);
+      }
+    });
+  },
+
+  render: function() {
+
+    var template = this.template();
+    $(this.el).html(template(this.model));
+
+    return this;
+  },
+
+  // Return an appropriate template based on if the parameter is a list, readonly, required
+  template: function(){
+    return Handlebars.templates.parameter_group;
+  }
 });
 'use strict';
 
