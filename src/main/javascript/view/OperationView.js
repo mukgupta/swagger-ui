@@ -62,7 +62,7 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
   // Note: copied from CoffeeScript compiled file
   // TODO: redactor
   render: function () {
-    var a, auth, auths, code, contentTypeModel, isMethodSubmissionSupported, k, key, l, len, len1, len2, len3, len4, m, modelAuths, n, o, p, param, q, ref, ref1, ref2, ref3, ref4, ref5, responseContentTypeView, responseSignatureView, schema, schemaObj, scopeIndex, signatureModel, statusCode, successResponse, type, v, value;
+    var a, auth, auths, code, contentTypeModel, isMethodSubmissionSupported, k, key, l, len, len1, len2, len3, len4, m, modelAuths, n, o, p, param, q, ref, ref1, ref2, ref3, ref4, ref5, responseContentTypeView, responseSignatureView, schema, schemaObj, scopeIndex, signatureModel, statusCode, successResponse, type, v, value, depends;
     isMethodSubmissionSupported = jQuery.inArray(this.model.method, this.model.supportedSubmitMethods()) >= 0;
     if (!isMethodSubmissionSupported) {
       this.model.isReadOnly = true;
@@ -217,16 +217,41 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
 
     ref4 = this.model.parameters;
 
-    this.addGroup(ref4);
-    // for (p = 0, len3 = ref4.length; p < len3; p++) {
-    //   param = ref4[p];
-    //   this.addParameter(param, contentTypeModel.consumes);
-    //   if (param.paramType === 'body' || param.in === 'body') {
-    //     this.addBodyModel(param)
-    //   }
-    // }
+    var tree = new Arboreal();
 
+    for (p = 0, len3 = ref4.length; p < len3; p++) {
+      param = ref4[p];
+      if(param && param['x-group']){
+        depends = param['x-group'];
+        var group = tree.find(depends[0][0]);
+        if(group){
+          group.appendChild(param, param.name);
+        }else{
+          tree.appendChild({isGroup: true}, depends[0][0]);
+          group = tree.find(depends[0][0]);
+          group.appendChild(param, param.name);
+        }
+      }else{
+        tree.appendChild(param, param.name)
+      }
+    }
+    var that = this;
+    tree.traverseDown(function(node){
+      if(node.depth == 1){
+        if(node.data && node.data.isGroup !== true){
+          that.addParameter(node.data, contentTypeModel.consumes, '.operation-params');
+        }else{
+            var groupParamsList = node.toArray();
+            var groupParams = [];
+            for(var i = 1; i< groupParamsList.length; i++){
+                groupParams.push(groupParamsList[i].data);
+            }
+            that.addGroup(groupParams, "Design params", contentTypeModel.consumes);
+        }
+      }
+    })
 
+    // this.addGroup(ref4, "Design params");
     ref5 = this.model.responseMessages;
     for (q = 0, len4 = ref5.length; q < len4; q++) {
       statusCode = ref5[q];
@@ -250,10 +275,10 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.model-signature', $(this.el)).append(signatureView.render().el);
   },
 
-  addGroup: function(params, consumes){
+  addGroup: function(params, groupname, consumes){
     var p, len3, param;
     var paramGroupView = new SwaggerUi.Views.ParameterGroupView({
-      model: params,
+      model: { name: groupname, id: this.parentId + '_' + this.nickname + '_' + Math.round(Math.random()*10000)},
       tagName: 'div',
       className: 'parameter-group',
       readOnly: this.model.isReadOnly

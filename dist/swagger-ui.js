@@ -906,8 +906,19 @@ this["Handlebars"]["templates"]["parameter_content_type"] = Handlebars.template(
   return buffer + "    </select>\n</div>\n";
 },"useData":true});
 this["Handlebars"]["templates"]["parameter_group"] = Handlebars.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
-  return "<div class=\"panel-group\" id=\"accordion3\">\n  <div class=\"panel panel-default\">\n    <div class=\"panel-heading\">\n      <h4 class=\"panel-title\">\n        <a data-toggle=\"collapse\" data-parent=\"#accordion3\" href=\"#collapseOne3\">\n          Poster params\n        </a>\n      </h4>\n    </div>\n    <div id=\"collapseOne3\" class=\"panel-collapse collapse \">\n      <div class=\"panel-body\"></div>\n    </div>\n  </div>\n</div>";
-  },"useData":true});
+  var helper, functionType="function", helperMissing=helpers.helperMissing, escapeExpression=this.escapeExpression;
+  return "<div class=\"panel-group\" id=\"accordion_"
+    + escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helperMissing),(typeof helper === functionType ? helper.call(depth0, {"name":"id","hash":{},"data":data}) : helper)))
+    + "\">\n  <div class=\"panel panel-default\">\n    <div class=\"panel-heading\">\n      <h4 class=\"panel-title\">\n        <a data-toggle=\"collapse\" data-parent=\"#accordion_"
+    + escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helperMissing),(typeof helper === functionType ? helper.call(depth0, {"name":"id","hash":{},"data":data}) : helper)))
+    + "\" href=\"#collapse_"
+    + escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helperMissing),(typeof helper === functionType ? helper.call(depth0, {"name":"id","hash":{},"data":data}) : helper)))
+    + "\">\n        "
+    + escapeExpression(((helper = (helper = helpers.name || (depth0 != null ? depth0.name : depth0)) != null ? helper : helperMissing),(typeof helper === functionType ? helper.call(depth0, {"name":"name","hash":{},"data":data}) : helper)))
+    + "\n        </a>\n      </h4>\n    </div>\n    <div id=\"collapse_"
+    + escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helperMissing),(typeof helper === functionType ? helper.call(depth0, {"name":"id","hash":{},"data":data}) : helper)))
+    + "\" class=\"panel-collapse collapse \">\n      <div class=\"panel-body\"></div>\n    </div>\n  </div>\n</div>";
+},"useData":true});
 this["Handlebars"]["templates"]["resource"] = Handlebars.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
   var helper, functionType="function", helperMissing=helpers.helperMissing, escapeExpression=this.escapeExpression;
   return "<ul class='endpoints' id='"
@@ -21506,7 +21517,7 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
   // Note: copied from CoffeeScript compiled file
   // TODO: redactor
   render: function () {
-    var a, auth, auths, code, contentTypeModel, isMethodSubmissionSupported, k, key, l, len, len1, len2, len3, len4, m, modelAuths, n, o, p, param, q, ref, ref1, ref2, ref3, ref4, ref5, responseContentTypeView, responseSignatureView, schema, schemaObj, scopeIndex, signatureModel, statusCode, successResponse, type, v, value;
+    var a, auth, auths, code, contentTypeModel, isMethodSubmissionSupported, k, key, l, len, len1, len2, len3, len4, m, modelAuths, n, o, p, param, q, ref, ref1, ref2, ref3, ref4, ref5, responseContentTypeView, responseSignatureView, schema, schemaObj, scopeIndex, signatureModel, statusCode, successResponse, type, v, value, depends;
     isMethodSubmissionSupported = jQuery.inArray(this.model.method, this.model.supportedSubmitMethods()) >= 0;
     if (!isMethodSubmissionSupported) {
       this.model.isReadOnly = true;
@@ -21661,16 +21672,41 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
 
     ref4 = this.model.parameters;
 
-    this.addGroup(ref4);
-    // for (p = 0, len3 = ref4.length; p < len3; p++) {
-    //   param = ref4[p];
-    //   this.addParameter(param, contentTypeModel.consumes);
-    //   if (param.paramType === 'body' || param.in === 'body') {
-    //     this.addBodyModel(param)
-    //   }
-    // }
+    var tree = new Arboreal();
 
+    for (p = 0, len3 = ref4.length; p < len3; p++) {
+      param = ref4[p];
+      if(param && param['x-group']){
+        depends = param['x-group'];
+        var group = tree.find(depends[0][0]);
+        if(group){
+          group.appendChild(param, param.name);
+        }else{
+          tree.appendChild({isGroup: true}, depends[0][0]);
+          group = tree.find(depends[0][0]);
+          group.appendChild(param, param.name);
+        }
+      }else{
+        tree.appendChild(param, param.name)
+      }
+    }
+    var that = this;
+    tree.traverseDown(function(node){
+      if(node.depth == 1){
+        if(node.data && node.data.isGroup !== true){
+          that.addParameter(node.data, contentTypeModel.consumes, '.operation-params');
+        }else{
+            var groupParamsList = node.toArray();
+            var groupParams = [];
+            for(var i = 1; i< groupParamsList.length; i++){
+                groupParams.push(groupParamsList[i].data);
+            }
+            that.addGroup(groupParams, "Design params", contentTypeModel.consumes);
+        }
+      }
+    })
 
+    // this.addGroup(ref4, "Design params");
     ref5 = this.model.responseMessages;
     for (q = 0, len4 = ref5.length; q < len4; q++) {
       statusCode = ref5[q];
@@ -21694,10 +21730,10 @@ SwaggerUi.Views.OperationView = Backbone.View.extend({
     $('.model-signature', $(this.el)).append(signatureView.render().el);
   },
 
-  addGroup: function(params, consumes){
+  addGroup: function(params, groupname, consumes){
     var p, len3, param;
     var paramGroupView = new SwaggerUi.Views.ParameterGroupView({
-      model: params,
+      model: { name: groupname, id: this.parentId + '_' + this.nickname + '_' + Math.round(Math.random()*10000)},
       tagName: 'div',
       className: 'parameter-group',
       readOnly: this.model.isReadOnly
